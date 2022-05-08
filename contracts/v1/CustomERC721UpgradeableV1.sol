@@ -24,10 +24,10 @@ contract CustomERC721UpgradeableV1 is
     string private hiddenTokenURI;
     bytes32 public rootHash;
 
-    uint256 public PRICE;
-    uint256 public MAX_NFTS;
-    uint256 public MAX_PER_MINT;
-    uint256 public NFT_LIMIT;
+    uint256 public price;
+    uint256 public maxNfts;
+    uint256 public maxNftsPerTx;
+    uint256 public maxNftsPerAddressLimit;
 
     bool public paused;
     bool public revealed;
@@ -45,10 +45,10 @@ contract CustomERC721UpgradeableV1 is
         __Ownable_init();
         __ReentrancyGuard_init();
 
-        PRICE = 0.012 ether;
-        MAX_NFTS = 100;
-        MAX_PER_MINT = 3;
-        NFT_LIMIT = 10;
+        price = 0.012 ether;
+        maxNfts = 10000;
+        maxNftsPerTx = 3;
+        maxNftsPerAddressLimit = 10;
 
         paused = false;
         revealed = false;
@@ -90,20 +90,19 @@ contract CustomERC721UpgradeableV1 is
 
     modifier mintCompliance(uint256 _mintAmount, address _user) {
         require(
-            _mintAmount > 0 && _mintAmount <= MAX_PER_MINT,
+            _mintAmount > 0 && _mintAmount <= maxNftsPerTx,
             "Invalid mint amount !!"
         );
         require(
-            totalSupply() + _mintAmount <= MAX_NFTS,
+            totalSupply() + _mintAmount <= maxNfts,
             "NFTs are solded out !!"
         );
 
-        if (presale) {
-            require(
-                addressMintedBalance[_user] + _mintAmount <= NFT_LIMIT,
-                "You cannot mint more NFTS !!"
-            );
-        }
+        require(
+            addressMintedBalance[_user] + _mintAmount <= maxNftsPerAddressLimit,
+            "You cannot mint more NFTS !!"
+        );
+
         _;
     }
 
@@ -144,9 +143,10 @@ contract CustomERC721UpgradeableV1 is
         nonReentrant
         mintCompliance(_mintAmount, _msgSender())
         isPublicSale
+        isPaused
     {
         require(
-            PRICE * _mintAmount >= msg.value,
+            msg.value >= price * _mintAmount,
             "Insufficient funds to mint !!"
         );
         _mintNfts(_msgSender(), _mintAmount);
